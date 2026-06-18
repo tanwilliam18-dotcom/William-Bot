@@ -155,9 +155,9 @@
 
   /* ── INPUT ── */
   .input-area {
-    padding: 0.75rem 1rem 1rem; background: white;
+    padding: 0.6rem 1rem 1rem; background: white;
     border-top: 1px solid #e2e8f0;
-    display: flex; gap: 10px; align-items: flex-end;
+    display: flex; flex-direction: column; gap: 0;
   }
   .input-area textarea {
     flex: 1; border: 1.5px solid #e2e8f0; border-radius: 12px;
@@ -194,16 +194,21 @@
   .contact-card a:hover { text-decoration: underline; }
 
   /* ── CONNECT BUTTON ── */
-  .connect-btn {
-    display: block; width: calc(100% - 2rem);
-    margin: 0.5rem 1rem 0;
+  .input-row-top {
+    padding: 0.5rem 0 0.4rem;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 0.5rem;
+  }
+  .connect-btn-inline {
+    display: block; width: 100%;
     background: linear-gradient(135deg, #1a3a5c, #2563a8);
-    color: white; border: none; border-radius: 12px;
-    padding: 12px 20px; font-size: 14px; font-weight: 600;
+    color: white; border: none; border-radius: 10px;
+    padding: 10px 20px; font-size: 13.5px; font-weight: 600;
     cursor: pointer; text-align: center; letter-spacing: 0.2px;
     transition: opacity 0.15s;
   }
-  .connect-btn:hover { opacity: 0.88; }
+  .connect-btn-inline:hover { opacity: 0.88; }
+  .input-row-bottom { display: flex; gap: 10px; align-items: flex-end; }
 
   /* ── CONTACT MODAL ── */
   .modal-overlay {
@@ -302,6 +307,10 @@
   </div>
 
   <div class="input-area">
+    <div class="input-row-top">
+      <button class="connect-btn-inline" onclick="openModal()">📬 Connect with William</button>
+    </div>
+    <div class="input-row-bottom">
     <textarea id="user-input" rows="1" placeholder="Ask a question about William…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
     <button class="send-btn" onclick="sendMessage()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -309,6 +318,7 @@
         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
       </svg>
     </button>
+    </div>
   </div>
 </div>
 
@@ -402,7 +412,7 @@ const FAQ = {
 <p><span class="star-label">Leadership through credibility</span> William leads without relying on authority. At SMBC, he coordinated Finance, Compliance, and external consultants through the MAS 610 implementation under regulatory pressure. At Scotiabank, he chaired cross-functional governance forums, mentored team members, and championed DEI through Employee Resource Groups — recognised with the <strong>2024 Best of the Best Award</strong> across the global organisation.</p>
 <p><span class="star-label">Forward-looking</span> He is currently completing the <strong>Certified AI Governance Professional (AIGP)</strong> at SMU — not a career pivot, but a deliberate future-proofing of a governance and data skill set that is already deep. For institutions navigating AI adoption under MAS scrutiny, he will be among a small number of Business Managers who can engage substantively on both the governance obligations and the technical reality.</p>
 <p>William is targeting a <strong>Business Manager or COO-track role</strong> in banking or financial services where governance rigour, BI capability, and cross-functional leadership are valued at the strategic level — not just managed downward.</p>
-<div class="contact-card">📬 Reach William directly: <a href="mailto:tan.william.18@gmail.com">tan.william.18@gmail.com</a> | <a href="tel:+6596587625">+65 9658 7625</a></div>`
+<div style="margin-top:12px;"><button onclick="openModal()" style="background:linear-gradient(135deg,#1a3a5c,#2563a8);color:white;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;width:100%;">📬 Connect with William directly</button></div>`
   }
 };
 
@@ -772,8 +782,9 @@ function formatClaudeReply(text) {
     .replace(/Action:/gi,    '<span class="star-label">Action</span>')
     .replace(/Result:/gi,    '<span class="star-label">Result</span>');
   html = html.split(/\n\n+/).map(p => p.trim() ? `<p>${p.replace(/\n/g,' ')}</p>` : '').join('');
-  if (text.includes('contact') || text.includes('reach') || text.includes('directly')) {
-    html += `<div class="contact-card">📬 <a href="mailto:tan.william.18@gmail.com">tan.william.18@gmail.com</a> | <a href="tel:+6596587625">+65 9658 7625</a></div>`;
+  const needsContact = /contact|reach out|directly|get in touch|connect/i.test(text);
+  if (needsContact) {
+    html += `<div style="margin-top:10px;"><button onclick="openModal()" style="background:linear-gradient(135deg,#1a3a5c,#2563a8);color:white;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">📬 Send William a message</button></div>`;
   }
   return html;
 }
@@ -832,7 +843,8 @@ async function sendMessage() {
     addMessage('bot', formatClaudeReply(reply));
   } catch(e) {
     removeTyping();
-    addMessage('bot', `I'm having trouble connecting right now. Please reach out to William directly:<div class="contact-card">📬 <a href="mailto:tan.william.18@gmail.com">tan.william.18@gmail.com</a> | <a href="tel:+6596587625">+65 9658 7625</a></div>`);
+    addMessage('bot', `<p>I don't have a specific answer for that one. Let me connect you with William directly — he'll get back to you personally.</p>`);
+    setTimeout(() => openModal(text), 400);
   }
 }
 
@@ -872,13 +884,23 @@ window.addEventListener('load', () => {
 });
 
 /* ── MODAL CONTROLS ── */
-function openModal() {
+function openModal(prefillQuestion) {
   document.getElementById('modalOverlay').classList.add('visible');
   document.getElementById('modalForm').style.display = 'block';
   document.getElementById('modalSuccess').style.display = 'none';
   document.getElementById('inputName').value = '';
   document.getElementById('inputEmail').value = '';
   document.getElementById('inputCompany').value = '';
+  // Pre-fill question if provided
+  const qField = document.getElementById('inputQuestion');
+  if (qField) qField.value = prefillQuestion || '';
+  // Update modal subtitle based on context
+  const subtitle = document.getElementById('modalSubtitle');
+  if (subtitle) {
+    subtitle.textContent = prefillQuestion
+      ? 'Your question has been noted. Leave your details and William will answer you directly.'
+      : 'Leave your details and William will reach out to you directly.';
+  }
   setTimeout(() => document.getElementById('inputName').focus(), 100);
 }
 
@@ -908,11 +930,12 @@ async function submitContact() {
   btn.textContent = 'Sending...';
 
   try {
+    const question = document.getElementById('inputQuestion')?.value.trim() || '';
     await emailjs.send('service_54c44kb', 'template_hhtbicb', {
       from_name:  name,
       from_email: email,
       company:    company || 'Not provided',
-      message:    `New contact from William Tan Career Chatbot.`
+      message:    question ? `Question: ${question}` : 'New contact from William Tan Career Chatbot.'
     });
     document.getElementById('modalForm').style.display = 'none';
     document.getElementById('modalSuccess').style.display = 'block';
@@ -924,21 +947,21 @@ async function submitContact() {
   }
 }
 </script>
-  <!-- ── CONNECT BUTTON ── -->
-  <button class="connect-btn" onclick="openModal()">📬 Connect with William</button>
 
   <!-- ── CONTACT MODAL ── -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal" id="modalBox">
       <div id="modalForm">
         <h2>Connect with William</h2>
-        <p class="subtitle">Leave your details and William will reach out to you directly.</p>
+        <p class="subtitle" id="modalSubtitle">Leave your details and William will reach out to you directly.</p>
         <label>Your Name</label>
         <input type="text" id="inputName" placeholder="e.g. Sarah Lim">
         <label>Your Email</label>
         <input type="email" id="inputEmail" placeholder="e.g. sarah@company.com">
         <label>Company</label>
         <input type="text" id="inputCompany" placeholder="e.g. DBS Bank">
+        <label>Your Question <span style="font-weight:400;opacity:0.6;">(optional)</span></label>
+        <input type="text" id="inputQuestion" placeholder="e.g. What is William's notice period?">
         <div class="modal-actions">
           <button class="modal-cancel" onclick="closeModal()">Cancel</button>
           <button class="modal-submit" id="submitBtn" onclick="submitContact()">Send</button>
