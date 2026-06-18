@@ -437,24 +437,53 @@ const EL_MODEL    = 'eleven_turbo_v2_5';
 
 let currentAudio = null;
 let currentUtterance = null;
+let audioUnlocked = false;
+let pendingSpeakText = null;
+
+// Unlock audio context on first user gesture
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  // Create and immediately suspend a silent audio context to satisfy browser policy
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume().then(() => ctx.close());
+  } catch(e) {}
+}
+document.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('keydown', unlockAudio, { once: true });
 
 // Browser TTS fallback - free and unlimited
 function speakBrowser(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  currentUtterance = new SpeechSynthesisUtterance(text);
-  currentUtterance.rate  = 0.93;
-  currentUtterance.pitch = 1.0;
-  currentUtterance.volume = 1.0;
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v =>
-    v.lang.startsWith("en") && /male|david|mark|daniel|alex|google uk/i.test(v.name)
-  ) || voices.find(v => v.lang.startsWith("en"));
-  if (preferred) currentUtterance.voice = preferred;
-  currentUtterance.onstart = () => setSpeaking(true);
-  currentUtterance.onend   = () => setSpeaking(false);
-  currentUtterance.onerror = () => setSpeaking(false);
-  window.speechSynthesis.speak(currentUtterance);
+
+  // Small delay to let browser register the gesture chain
+  setTimeout(() => {
+    currentUtterance = new SpeechSynthesisUtterance(text);
+    currentUtterance.rate   = 0.93;
+    currentUtterance.pitch  = 1.0;
+    currentUtterance.volume = 1.0;
+
+    const trySpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v =>
+        v.lang.startsWith("en") && /male|david|mark|daniel|alex|google uk/i.test(v.name)
+      ) || voices.find(v => v.lang.startsWith("en"));
+      if (preferred) currentUtterance.voice = preferred;
+      currentUtterance.onstart = () => setSpeaking(true);
+      currentUtterance.onend   = () => setSpeaking(false);
+      currentUtterance.onerror = () => setSpeaking(false);
+      window.speechSynthesis.speak(currentUtterance);
+    };
+
+    // Voices may not be loaded yet on first call
+    if (window.speechSynthesis.getVoices().length > 0) {
+      trySpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => { trySpeak(); };
+    }
+  }, 100);
 }
 
 // Main speak: tries ElevenLabs first, falls back to browser TTS automatically
@@ -483,7 +512,16 @@ async function speak(htmlText) {
     currentAudio = new Audio(url);
     currentAudio.onended = () => { setSpeaking(false); URL.revokeObjectURL(url); };
     currentAudio.onerror = () => { setSpeaking(false); };
-    currentAudio.play();
+    // Play with user-gesture-aware promise handling
+    const playPromise = currentAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay blocked - fall through to browser TTS
+        console.info("Autoplay blocked, switching to browser TTS");
+        setSpeaking(false);
+        speakBrowser(text);
+      });
+    }
   } catch(err) {
     // ElevenLabs quota exhausted or unavailable - silently fall back to browser TTS
     console.info("ElevenLabs unavailable (" + err.message + "), switching to browser TTS");
